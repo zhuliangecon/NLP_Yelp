@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Times, sans-serif;
+        }
+        .error {
+            font-size: 20px;
+            color: red;
+            font-weight: bold;
+            text-align: center;
+        }
+        .custom-button {
+            font-size: 16px;
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border-radius: 25px;
+            margin-top: 20px; 
+            margin-bottom: 20px; 
+        }
+
+        .custom-button:hover {
+            background-color: #007B9A;
+        }        
+     
+        .center-container {
+            text-align: center;
+        }        
+        .centered {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .food-button {
+            width: 100px;
+            height: 35px;
+            margin: 5px;
+        }
+
+        .food-button.selected {
+            background-color: #C70039;
+            color: white;
+        }     
+        #custom-food-input {
+             width: 80%; /
+            display: block; 
+        }
+        #food-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        #tips {
+            font-style: italic;
+            margin: 0 auto;
+            max-width: 600px;
+            margin-bottom: 10px;  /* Add space between tips */
+        }
+        .restaurant {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .restaurant p.tip {
+            font-style: italic;
+            margin: 0 auto;
+            max-width: 600px;
+            margin-bottom: 10px;
+        }        
+        
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        window.onload = function() {
+            const foodOptions = [
+                "pizza", "sushi", "burger", "tacos", "ramen", "steak",
+                "fried chicken", "pasta", "wings", "sashimi", "ribeye", "seafood"
+            ];
+
+            const foodButtonsContainer = document.getElementById('food-buttons');
+            const customFoodInput = document.getElementById('custom-food-input');
+            const submitFoodButton = document.getElementById('submit-food');
+            const selectedFoodsContainer = document.getElementById('selected-foods');
+            let selectedFood = [];
+
+            foodOptions.forEach(food => {
+                const button = document.createElement('button');
+                button.textContent = food;
+                button.classList.add('food-button');
+                button.addEventListener('click', () => {
+                    button.classList.toggle('selected');
+                });
+                foodButtonsContainer.appendChild(button);
+            });
+
+            submitFoodButton.addEventListener('click', () => {
+                selectedFood = Array.from(foodButtonsContainer.children)
+                    .filter(button => button.classList.contains('selected'))
+                    .map(button => button.textContent);
+
+                if (customFoodInput.value) {
+                    const customFood = customFoodInput.value.split(';').map(food => food.trim());
+                    selectedFood.push(...customFood);
+                }
+
+                selectedFoodsContainer.innerHTML = selectedFood.join(', ');
+            });
+
+            const drawForm = document.getElementById('draw-form');
+            const drawResultsContainer = document.getElementById('draw-results');
+
+            drawForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const formData = new FormData(drawForm);
+                selectedFood.forEach(food => formData.append('keywords[]', food));
+
+                try {
+                    const response = await fetch('/draw', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result) {
+                        const tipsList = result.tips.map(tip => `<p class="tip">"${tip}"</p>`).join('');
+
+                        drawResultsContainer.innerHTML = `
+                            <div class="restaurant">
+                                <h2>Let's try <span style="color: #C70039;">${result.keyword}</span></h2>
+                                <h2><a href="${result.google_maps_url}" target="_blank">${result.name} (${result.stars})</a></h2>
+                                <p>${result.location}</p>
+                                <p>${result.tips_count} tips mentioned ${result.keyword}</p>
+                                ${tipsList}
+                            </div>
+                        `;
+                    } else if (response.ok && !result) {
+                        drawResultsContainer.innerHTML = "<p class = error>No results found. Please try again.<br> Please note that the Yelp Open Dataset does not include all restaurants in every area. <br>You can try some of the following Zip codes, which have a high number of restaurants :<br>33607<br>19107<br>37203<br>89502<br>93101</p>";
+                    } else {
+                        drawResultsContainer.innerHTML = "<p class = error>An error occurred. Please try again.</p>";
+                    }
+                } catch (error) {
+                    drawResultsContainer.innerHTML = "<p class = error>Please check your Zip Code.</p>";
+                }
+            });
+        }
+    </script>
+
+<body>
+    <div class="center-container">
+        <h1>Dine Dice</h1>
+        <div id="food-options">
+            <h2>Step 1: Customize Your Pool</h2>
+            <div id="food-buttons"></div>
+            </br>
+            <div class="centered">
+                <input id="custom-food-input" type="text" placeholder="Or enter by hand, separated by ';'" />
+            </div>
+            </br>
+            <button id="submit-food" class="custom-button">Create Pool</button>
+            <div id="selected-foods"></div>
+        </div>
+    </div>
+    <div class="center-container">
+        <div id="draw">
+            <h2>Step 2: Draw a Lot!</h2>
+            <form id="draw-form">
+                <label for="draw-zipcode">Zip Code:</label>
+                <input id="draw-zipcode" type="text" name="zipcode" value="19107" />
+                <label for="draw-radius">Mile Range:</label>
+                <input id="draw-radius" type="range" name="radius" min="5" max="50" step="5" value="10" oninput="document.getElementById('miles-display').textContent = this.value;" />
+                <span id="miles-display">10</span> miles
+                </br>
+                <button type="submit" class="custom-button">Draw</button>
+            </form>
+            <div id="draw-results"></div>
+        </div>
+    </br>
+    </div>
+    <a href="/">Go back to the main page</a>
+</body>
+</html>
+

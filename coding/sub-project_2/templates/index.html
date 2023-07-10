@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Recommender</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>       
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        form label {
+            margin: 0 10px;
+        }
+        .error {
+            font-size: 20px;
+            color: red;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .custom-button {
+            font-size: 16px;
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border-radius: 25px;
+            margin-top: 20px; 
+            margin-bottom: 20px; 
+        }
+
+        .custom-button:hover {
+            background-color: #007B9A;
+        }          
+
+        .submit-btn {
+            text-align: center;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .restaurant {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .restaurant p.tip {
+            font-style: italic;
+            margin: 0 auto;
+            max-width: 600px;
+            margin-bottom: 10px;  /* Add space between tips */
+        }
+    </style>
+    <script>
+        $(document).ready(function() {
+            $('#search-form').submit(function(event) {
+                event.preventDefault();
+                $.ajax({
+                    url: '/search',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    success: function(data) {
+                        // Clear previous results
+                        $("#results-container").empty();
+
+                        // Check if data is empty
+                        if (data.length === 0) {
+                            // Display a generic error message
+                            $("#results-container").append(`<p class = error>No Restaurant Found. <br> Please try adjusting your search radius and Cuisine preferences. <br> Please note that the Yelp Open Dataset does not include all restaurants in every area. <br>You can try some of the following Zip codes, which have a high number of restaurants :<br>33607<br>19107<br>37203<br>	
+89502<br>93101</p>`);
+                        } else {
+                            // Process and display the results here
+                            data.forEach(function(result) {
+                                // Add restaurant information to the results container
+                                $("#results-container").append(`
+                                    <div class="restaurant">
+                                        <h2><a href="${result.google_maps_url}" target="_blank">${result.name} (${result.stars})</a></h2>
+                                        <p>${result.location}</p>
+                                        <p>${result.tips_count} tips mentioned ${result.keyword}</p>
+                                        ${result.tips.map(tip => `<p class="tip">"${tip}"</p>`).join('')}
+                                    </div>
+                                `);
+                            });
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        // Clear previous results
+                        $("#results-container").empty();
+
+                        // Show error message
+                        $("#results-container").append('<p class = error> Please check your Zip code </p>');
+                    }
+                });
+            });
+        });
+    </script>
+
+
+</head>
+<body>
+    <h1>Restaurant Recommender</h1>
+    <form id="search-form">
+        <label for="keyword">Cuisine:</label>
+        <input type="text" name="keyword" id="keyword" placeholder="e.g., burger, sushi" required>
+        <label for="zipcode">Zip Code:</label>
+        <input type="text" name="zipcode" id="zipcode" value="19107" required>
+        <label for="draw-radius">Mile Range:</label>
+        <input id="draw-radius" type="range" name="radius" min="5" max="50" step="5" value="10" oninput="document.getElementById('miles-display').textContent = this.value;" />
+        <span id="miles-display">10</span>&nbsp;miles
+        <div class="submit-btn">
+            <button type="submit" class="custom-button">Search</button>
+        </div>
+        <!-- Add this line below the search button -->
+        <a href="/draw_page" style="display:block; text-align:center;">Not sure what to eat?</a>
+    </form>
+    <div id="results">
+        <div id="results-container"></div>
+    </div>
+</body>
+</html>
